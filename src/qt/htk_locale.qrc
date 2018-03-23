@@ -1,0 +1,20 @@
+<!DOCTYPE RCC><RCC version="1.0">
+    <qresource prefix="/translations">
+        <file alias="bg">locale/htk_bg.qm</file>
+        <file alias="de">locale/htk_de.qm</file>
+        <file alias="en">locale/htk_en.qm</file>
+        <file alias="es">locale/htk_es.qm</file>
+        <file alias="fi">locale/htk_fi.qm</file>
+        <file alias="fr">locale/htk_fr.qm</file>
+        <file alias="it">locale/htk_it.qm</file>
+        <file alias="ja">locale/htk_ja.qm</file>
+        <file alias="pl">locale/htk_pl.qm</file>
+        <file alias="pt">locale/htk_pt.qm</file>
+        <file alias="ru">locale/htk_ru.qm</file>
+        <file alias="sk">locale/htk_sk.qm</file>
+        <file alias="sv">locale/htk_sv.qm</file>
+        <file alias="vi">locale/htk_vi.qm</file>
+        <file alias="zh_CN">locale/htk_zh_CN.qm</file>
+        <file alias="zh_TW">locale/htk_zh_TW.qm</file>
+    </qresource>
+</RCC>

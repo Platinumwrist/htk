@@ -1,0 +1,11 @@
+[Protocol]
+exec=htk-qt '%u'
+protocol=htk
+input=none
+output=none
+helper=true
+listing=
+reading=false
+writing=false
+makedir=false
+deleting=false

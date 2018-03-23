@@ -1,0 +1,26 @@
+[Unit]
+Description=HTK's distributed currency daemon
+After=network.target
+
+[Service]
+User=htk
+Group=htk
+
+Type=forking
+PIDFile=/var/lib/htkd/htkd.pid
+
+ExecStart=/usr/bin/htkd -daemon -pid=/var/lib/htkd/htkd.pid \
+          -conf=/etc/htk/htk.conf -datadir=/var/lib/htkd
+
+ExecStop=-/usr/bin/htk-cli -conf=/etc/htk/htk.conf \
+         -datadir=/var/lib/htkd stop
+
+Restart=always
+PrivateTmp=true
+TimeoutStopSec=60s
+TimeoutStartSec=2s
+StartLimitInterval=120s
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target

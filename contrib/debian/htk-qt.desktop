@@ -1,0 +1,12 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=HTK
+Comment=HTK P2P Cryptocurrency
+Comment[fr]=HTK, monnaie virtuelle cryptographique pair à pair
+Comment[tr]=HTK, eşten eşe kriptografik sanal para birimi
+Exec=htk-qt %u
+Terminal=false
+Type=Application
+Icon=htk128
+MimeType=x-scheme-handler/htk;
+Categories=Office;Finance;
