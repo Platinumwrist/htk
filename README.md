@@ -17,26 +17,26 @@ Our coin have three parts that are wallet, sdk and simple messenger.
 * Block 186401 - Infinite : Tiered
 
 - Tiered Rewards
-186401 - +3mon
-PoS : 4 HTK reward
-Tier 1 : 5000 HTK / 12 HTK reward.
-Tier 2 : 10000 HTK / 27 HTK reward.
-Tier 3 : 25000 HTK / 72 HTK reward.
-Tier 4 : 50000 HTK / 156 HTK reward.
+* 186401 - +3mon
+* PoS : 4 HTK reward
+* Tier 1 : 5000 HTK / 12 HTK reward.
+* Tier 2 : 10000 HTK / 27 HTK reward.
+* Tier 3 : 25000 HTK / 72 HTK reward.
+* Tier 4 : 50000 HTK / 156 HTK reward.
 
 +3mon - +6mon
-PoS : 2 HTK reward
-Tier 1 : 5000 HTK / 4 HTK reward.
-Tier 2 : 10000 HTK / 9 HTK reward.
-Tier 3 : 25000 HTK / 24 HTK reward.
-Tier 4 : 50000 HTK / 52 HTK reward.
+* PoS : 2 HTK reward
+* Tier 1 : 5000 HTK / 4 HTK reward.
+* Tier 2 : 10000 HTK / 9 HTK reward.
+* Tier 3 : 25000 HTK / 24 HTK reward.
+* Tier 4 : 50000 HTK / 52 HTK reward.
 
 +6mon - Infinite
-PoS : 1 HTK reward
-Tier 1 : 5000 HTK / 1 HTK reward.
-Tier 2 : 10000 HTK / 3 HTK reward.
-Tier 3 : 25000 HTK / 8 HTK reward.
-Tier 4 : 50000 HTK / 17 HTK reward.
+* PoS : 1 HTK reward
+* Tier 1 : 5000 HTK / 1 HTK reward.
+* Tier 2 : 10000 HTK / 3 HTK reward.
+* Tier 3 : 25000 HTK / 8 HTK reward.
+* Tier 4 : 50000 HTK / 17 HTK reward.
 
 - Purpose of Premine
 * 1000 HTK - For advisors.
