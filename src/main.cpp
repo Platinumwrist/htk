@@ -205,6 +205,59 @@ struct CMainSignals {
 
 } // anon namespace
 
+bool IsMNCollateralValid(int nHeight, int64_t value) {
+    if (nHeight <= TIERED_MASTERNODES_START_BLOCK) {
+        return value == 5000*COIN;
+    } else {
+        // Using BOOST_FOREACH for concistency with the rest of the code, everything should be using a plain for from c++ 11 or 17
+        BOOST_FOREACH(PAIRTYPE(const int, int)& mntier, masternodeTiers)
+            {
+                if (value == (mntier.second)*COIN)
+                return true;
+            }
+        }
+    return false;
+}
+
+int64_t GetMNCollateral(int nHeight, int tier) {
+    if(nHeight <= TIERED_MASTERNODES_START_BLOCK) {
+        return 5000;
+    } else {
+        return masternodeTiers[tier];
+    }
+}
+
+int GetMNTierByCollateral(int nHeight, int64_t value) {
+    if(nHeight <= TIERED_MASTERNODES_START_BLOCK) {
+        return 1;
+    }
+    BOOST_FOREACH(PAIRTYPE(const int, int) & mntier, masternodeTiers)
+    {
+        if(mntier.second * COIN == value) {
+            return mntier.first;
+        }
+    }
+    return 0;
+}
+
+int GetMNTierByVin(const COutPoint &mnvin) {
+    CTransaction txin;
+    uint256 hashBlockPrev;
+    if (!GetTransaction(mnvin.hash, txin, hashBlockPrev, true)) {
+        return 0;
+    }
+    if(txin.vout.size() <= mnvin.n) {
+        return 0;
+    }
+    BOOST_FOREACH(PAIRTYPE(const int, int) & mntier, masternodeTiers)
+    {
+        if(mntier.second * COIN == txin.vout[mnvin.n].nValue) {
+            return mntier.first;
+        }
+    }
+    return 0;
+}
+
 void RegisterValidationInterface(CValidationInterface* pwalletIn)
 {
     g_signals.SyncTransaction.connect(boost::bind(&CValidationInterface::SyncTransaction, pwalletIn, _1, _2));
@@ -1631,13 +1684,19 @@ int64_t GetBlockValue(int nHeight)
 		nSubsidy = 6 * COIN;
 	} else if (nHeight > Params().LAST_POW_BLOCK()-1 && nHeight <= Params().LAST_POW_BLOCK()) {
 		nSubsidy = 50000 * COIN; // reboot premine for airdrop, campaign, marketing, developer; change ownership of coin
-	} else if (nHeight > Params().LAST_POW_BLOCK()) {
+	} else if (nHeight > Params().LAST_POW_BLOCK() && nHeight <= TIERED_MASTERNODES_START_BLOCK) {
 		nSubsidy = 20 * COIN;
-	}
-    return nSubsidy;
+	} else if (nHeight > TIERED_MASTERNODES_START_BLOCK && nHeight <= TIERED_MASTERNODES_START_BLOCK + 129600) {
+		nSubsidy = 4 * COIN;
+    } else if (nHeight > TIERED_MASTERNODES_START_BLOCK + 129600 && nHeight <= TIERED_MASTERNODES_START_BLOCK + 259200) {
+		nSubsidy = 2 * COIN;
+    } else if (nHeight > TIERED_MASTERNODES_START_BLOCK + 259200) {
+		nSubsidy = 1 * COIN;
+    }
+	return nSubsidy;
 }
 
-int64_t GetMasternodePayment(int nHeight, int64_t blockValue, int nMasternodeCount)
+int64_t GetMasternodePayment(int nHeight, int64_t blockValue, int tier, int nMasternodeCount)
 {
 	int64_t ret = 0;
 	if(nHeight <= 5700 && nHeight > 0) {
@@ -1654,9 +1713,54 @@ int64_t GetMasternodePayment(int nHeight, int64_t blockValue, int nMasternodeCou
 		ret = blockValue * 50 / 100;
 	} else if (nHeight > Params().LAST_POW_BLOCK()-1 && nHeight <= Params().LAST_POW_BLOCK()) {
 		ret = 0;
-	} else if (nHeight > Params().LAST_POW_BLOCK()) {
+	} else if (nHeight > Params().LAST_POW_BLOCK() && nHeight <= TIERED_MASTERNODES_START_BLOCK) {
 		ret = blockValue * 80 / 100;
-	}
+	} else if (nHeight > TIERED_MASTERNODES_START_BLOCK && nHeight <= TIERED_MASTERNODES_START_BLOCK + 129600) {
+        switch(tier) {
+        case 1:
+    		ret = 12 * COIN;
+            break;
+        case 2:
+            ret = 27 * COIN;
+            break;
+        case 3:
+            ret = 72 * COIN;
+            break;
+        case 4:
+            ret = 156 * COIN;
+            break;
+        }
+    } else if (nHeight > TIERED_MASTERNODES_START_BLOCK + 129600 && nHeight <= TIERED_MASTERNODES_START_BLOCK + 259200) {
+		switch(tier) {
+        case 1:
+    		ret = 4 * COIN;
+            break;
+        case 2:
+            ret = 9 * COIN;
+            break;
+        case 3:
+            ret = 24 * COIN;
+            break;
+        case 4:
+            ret = 52 * COIN;
+            break;
+        }
+    } else if (nHeight > TIERED_MASTERNODES_START_BLOCK + 259200) {
+		switch(tier) {
+        case 1:
+    		ret = 1 * COIN;
+            break;
+        case 2:
+            ret = 3 * COIN;
+            break;
+        case 3:
+            ret = 8 * COIN;
+            break;
+        case 4:
+            ret = 17 * COIN;
+            break;
+        }
+    }
 	return ret;
 }
 
@@ -2189,6 +2293,16 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     pindex->nMoneySupply = nMoneySupplyPrev + nValueOut - nValueIn;
 
 	CAmount nExpectedMint = GetBlockValue(pindex->nHeight);
+    if(pindex->nHeight > TIERED_MASTERNODES_START_BLOCK && !block.mnvin.hash.IsNull()) {
+        int tier = GetMNTierByVin(block.mnvin);
+        if(tier <= 0) {
+            return state.DoS(100,
+            error("ConnectBlock() : unknown masternode vin %s %d",
+                block.mnvin.hash.ToString().c_str(), block.mnvin.n),
+            REJECT_INVALID, "bad-masternode-vin");
+        }
+        nExpectedMint += GetMasternodePayment(GetHeight(), 0, tier);
+    }
     if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
         return state.DoS(100,
             error("ConnectBlock() : reward pays too much (actual=%s vs limit=%s) %d %d",

@@ -1120,6 +1120,9 @@ bool AppInit2(boost::thread_group& threadGroup)
         }
     }
 
+    SetReachable(NET_IPV4);
+    SetReachable(NET_IPV6);
+
     CService addrProxy;
     bool fProxy = false;
     if (mapArgs.count("-proxy")) {

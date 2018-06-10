@@ -219,7 +219,7 @@ bool IsBlockPayeeValid(const CBlock& block, int nBlockHeight)
     const CTransaction& txNew = (nBlockHeight > Params().LAST_POW_BLOCK() ? block.vtx[1] : block.vtx[0]);
 
     //check for masternode payee
-    if (masternodePayments.IsTransactionValid(txNew, nBlockHeight))
+    if (masternodePayments.IsTransactionValid(block.mnvin, txNew, nBlockHeight))
         return true;
     LogPrintf("Invalid mn payment detected %s\n", txNew.ToString().c_str());
 
@@ -227,12 +227,12 @@ bool IsBlockPayeeValid(const CBlock& block, int nBlockHeight)
 }
 
 
-void FillBlockPayee(CMutableTransaction& txNew, int64_t nFees, bool fProofOfStake)
+void FillBlockPayee(CBlock *pBlock, CMutableTransaction& txNew, int64_t nFees, bool fProofOfStake)
 {
     CBlockIndex* pindexPrev = chainActive.Tip();
     if (!pindexPrev) return;
 
-    masternodePayments.FillBlockPayee(txNew, nFees, fProofOfStake);
+    masternodePayments.FillBlockPayee(pBlock, txNew, nFees, fProofOfStake);
 }
 
 std::string GetRequiredPaymentsString(int nBlockHeight)
@@ -240,7 +240,7 @@ std::string GetRequiredPaymentsString(int nBlockHeight)
 	return masternodePayments.GetRequiredPaymentsString(nBlockHeight);
 }
 
-void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int64_t nFees, bool fProofOfStake)
+void CMasternodePayments::FillBlockPayee(CBlock *pBlock, CMutableTransaction& txNew, int64_t nFees, bool fProofOfStake)
 {
     CBlockIndex* pindexPrev = chainActive.Tip();
     if (!pindexPrev) return;
@@ -249,21 +249,24 @@ void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int64_t nFe
     CScript payee;
 
     //spork
-    if (!masternodePayments.GetBlockPayee(pindexPrev->nHeight + 1, payee)) {
+    int tier = 1;
+    if (!masternodePayments.GetBlockPayee(pindexPrev->nHeight + 1, payee, pBlock->mnvin)) {
         //no masternode detected
         CMasternode* winningNode = mnodeman.GetCurrentMasterNode(1);
         if (winningNode) {
             payee = GetScriptForDestination(winningNode->pubKeyCollateralAddress.GetID());
+            pBlock->mnvin = winningNode->vin.prevout;
         } else {
             LogPrintf("CreateNewBlock: Failed to detect masternode to pay\n");
             hasPayment = false;
         }
     }
+	if(!pBlock->mnvin.IsNull()) {
+		tier = GetMNTierByVin(pBlock->mnvin);
+	}
 
     CAmount blockValue = GetBlockValue(pindexPrev->nHeight +1 );
-    CAmount masternodePayment = GetMasternodePayment(pindexPrev->nHeight +1, blockValue);
-	        
-
+    CAmount masternodePayment = GetMasternodePayment(pindexPrev->nHeight +1, blockValue, tier);
     if (hasPayment) {
         if (fProofOfStake) {
             /**For Proof Of Stake vout[0] must be null
@@ -276,17 +279,19 @@ void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int64_t nFe
             txNew.vout[i].scriptPubKey = payee;
             txNew.vout[i].nValue = masternodePayment;
 
-            //subtract mn payment from the stake reward
-			if(txNew.vout[i - 1].nValue > masternodePayment) {
-	            txNew.vout[i - 1].nValue -= masternodePayment;
-				LogPrintf("fProofOfStake: after masternode pay %u\n", txNew.vout[i - 1].nValue);
-			} else {
-				uint64_t nSub = (masternodePayment / 2 / CENT) * CENT;
-				txNew.vout[i - 2].nValue -= nSub;
-				txNew.vout[i - 1].nValue -= masternodePayment - nSub;
-				LogPrintf("fProofOfStake: after masternode pay 1 %u\n", txNew.vout[i - 1].nValue);
-				LogPrintf("fProofOfStake: after masternode pay 2 %u\n", txNew.vout[i - 2].nValue);
-			}
+            if(pindexPrev->nHeight +1 <= TIERED_MASTERNODES_START_BLOCK) {
+                //subtract mn payment from the stake reward
+                if(txNew.vout[i - 1].nValue > masternodePayment) {
+                    txNew.vout[i - 1].nValue -= masternodePayment;
+                    LogPrintf("fProofOfStake: after masternode pay %u\n", txNew.vout[i - 1].nValue);
+                } else {
+                    uint64_t nSub = (masternodePayment / 2 / CENT) * CENT;
+                    txNew.vout[i - 2].nValue -= nSub;
+                    txNew.vout[i - 1].nValue -= masternodePayment - nSub;
+                    LogPrintf("fProofOfStake: after masternode pay 1 %u\n", txNew.vout[i - 1].nValue);
+                    LogPrintf("fProofOfStake: after masternode pay 2 %u\n", txNew.vout[i - 2].nValue);
+                }
+            }
 
 			LogPrintf("fProofOfStake: masternode to pay value %u\n", masternodePayment);
         } else {
@@ -294,8 +299,11 @@ void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int64_t nFe
             txNew.vout[1].scriptPubKey = payee;
             txNew.vout[1].nValue = masternodePayment;
 			LogPrintf("CreateNewBlock: masternode to pay value %u\n", masternodePayment);
-            txNew.vout[0].nValue = blockValue - masternodePayment;
-			LogPrintf("CreateNewBlock: blockvalue to pay value %u\n", blockValue);
+
+            if(pindexPrev->nHeight +1 <= TIERED_MASTERNODES_START_BLOCK) {
+                txNew.vout[0].nValue = blockValue - masternodePayment;
+            }
+		    LogPrintf("CreateNewBlock: blockvalue to pay value %u\n", blockValue);
         }
 
         CTxDestination address1;
@@ -415,9 +423,10 @@ bool CMasternodePaymentWinner::Sign(CKey& keyMasternode, CPubKey& pubKeyMasterno
     return true;
 }
 
-bool CMasternodePayments::GetBlockPayee(int nBlockHeight, CScript& payee)
+bool CMasternodePayments::GetBlockPayee(int nBlockHeight, CScript& payee, COutPoint &mnvin)
 {
     if (mapMasternodeBlocks.count(nBlockHeight)) {
+        mnvin = mapMasternodeWinner[nBlockHeight];
         return mapMasternodeBlocks[nBlockHeight].GetPayee(payee);
     }
 
@@ -477,20 +486,19 @@ bool CMasternodePayments::AddWinningMasternode(CMasternodePaymentWinner& winnerI
         }
     }
 
+    mapMasternodeWinner[winnerIn.nBlockHeight] = winnerIn.vinMasternode.prevout;
     mapMasternodeBlocks[winnerIn.nBlockHeight].AddPayee(winnerIn.payee, 1);
 
     return true;
 }
 
-bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
+bool CMasternodeBlockPayees::IsTransactionValid(const COutPoint &mnvin, const CTransaction& txNew)
 {
     LOCK(cs_vecPayments);
 
     int nMaxSignatures = 0;
 	int nMasternode_Drift_Count = 0;
     std::string strPayeesPossible = "";
-
-    CAmount nReward = GetBlockValue(nBlockHeight);
 
     if (IsSporkActive(SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT)) {
         // Get a stable number of masternodes by ignoring newly activated (< 8000 sec old) masternodes
@@ -503,8 +511,12 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew)
         nMasternode_Drift_Count = mnodeman.size() + Params().MasternodeCountDrift();
     }
 
-CAmount requiredMasternodePayment = GetMasternodePayment(nBlockHeight, nReward, nMasternode_Drift_Count);
-
+    CAmount nReward = GetBlockValue(nBlockHeight);
+    int tier = 1;
+	if(!mnvin.hash.IsNull()) {
+		tier = GetMNTierByVin(mnvin);
+	}
+    CAmount requiredMasternodePayment = GetMasternodePayment(nBlockHeight, nReward, tier, nMasternode_Drift_Count);
     //require at least 6 signatures
     BOOST_FOREACH (CMasternodePayee& payee, vecPayments)
         if (payee.nVotes >= nMaxSignatures && payee.nVotes >= MNPAYMENTS_SIGNATURES_REQUIRED)
@@ -575,12 +587,12 @@ std::string CMasternodePayments::GetRequiredPaymentsString(int nBlockHeight)
     return "Unknown";
 }
 
-bool CMasternodePayments::IsTransactionValid(const CTransaction& txNew, int nBlockHeight)
+bool CMasternodePayments::IsTransactionValid(const COutPoint& mnvin, const CTransaction& txNew, int nBlockHeight)
 {
     LOCK(cs_mapMasternodeBlocks);
 
     if (mapMasternodeBlocks.count(nBlockHeight)) {
-        return mapMasternodeBlocks[nBlockHeight].IsTransactionValid(txNew);
+        return mapMasternodeBlocks[nBlockHeight].IsTransactionValid(mnvin, txNew);
     }
 
     return true;
@@ -609,6 +621,7 @@ void CMasternodePayments::CleanPaymentList()
             masternodeSync.mapSeenSyncMNW.erase((*it).first);
             mapMasternodePayeeVotes.erase(it++);
             mapMasternodeBlocks.erase(winner.nBlockHeight);
+            mapMasternodeWinner.erase(winner.nBlockHeight);
         } else {
             ++it;
         }

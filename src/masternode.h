@@ -23,6 +23,8 @@
 #define MASTERNODE_REMOVAL_SECONDS (130 * 60)
 #define MASTERNODE_CHECK_SECONDS 5
 
+#define TIERED_MASTERNODES_START_BLOCK 186400
+
 using namespace std;
 
 class CMasternode;
@@ -31,7 +33,6 @@ class CMasternodePing;
 extern map<int64_t, uint256> mapCacheBlockHashes;
 
 bool GetBlockHash(uint256& hash, int nBlockHeight);
-
 
 //
 // The Masternode Ping Class : Contains a different serialize method for sending pings from masternodes throughout the network

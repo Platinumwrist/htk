@@ -30,7 +30,7 @@ void ProcessMessageMasternodePayments(CNode* pfrom, std::string& strCommand, CDa
 bool IsBlockPayeeValid(const CBlock& block, int nBlockHeight);
 std::string GetRequiredPaymentsString(int nBlockHeight);
 bool IsBlockValueValid(const CBlock& block, int64_t nExpectedValue, CAmount nMinted);
-void FillBlockPayee(CMutableTransaction& txNew, int64_t nFees, bool fProofOfStake);
+void FillBlockPayee(CBlock *pBlock, CMutableTransaction& txNew, int64_t nFees, bool fProofOfStake);
 
 void DumpMasternodePayments();
 
@@ -145,7 +145,7 @@ public:
         return false;
     }
 
-    bool IsTransactionValid(const CTransaction& txNew);
+    bool IsTransactionValid(const COutPoint& mnvin, const CTransaction& txNew);
     std::string GetRequiredPaymentsString();
 
     ADD_SERIALIZE_METHODS;
@@ -239,6 +239,7 @@ private:
 public:
     std::map<uint256, CMasternodePaymentWinner> mapMasternodePayeeVotes;
     std::map<int, CMasternodeBlockPayees> mapMasternodeBlocks;
+    std::map<int, COutPoint> mapMasternodeWinner;
     std::map<uint256, int> mapMasternodesLastVote; //prevout.hash + prevout.n, nBlockHeight
 
     CMasternodePayments()
@@ -251,6 +252,7 @@ public:
     {
         LOCK2(cs_mapMasternodeBlocks, cs_mapMasternodePayeeVotes);
         mapMasternodeBlocks.clear();
+        mapMasternodeWinner.clear();
         mapMasternodePayeeVotes.clear();
     }
 
@@ -261,8 +263,8 @@ public:
     void CleanPaymentList();
     int LastPayment(CMasternode& mn);
 
-    bool GetBlockPayee(int nBlockHeight, CScript& payee);
-    bool IsTransactionValid(const CTransaction& txNew, int nBlockHeight);
+    bool GetBlockPayee(int nBlockHeight, CScript& payee, COutPoint& mnvin);
+    bool IsTransactionValid(const COutPoint& mnvin, const CTransaction& txNew, int nBlockHeight);
     bool IsScheduled(CMasternode& mn, int nNotBlockHeight);
 
     bool CanVote(COutPoint outMasternode, int nBlockHeight)
@@ -283,7 +285,7 @@ public:
     int GetMinMasternodePaymentsProto();
     void ProcessMessageMasternodePayments(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
     std::string GetRequiredPaymentsString(int nBlockHeight);
-    void FillBlockPayee(CMutableTransaction& txNew, int64_t nFees, bool fProofOfStake);
+    void FillBlockPayee(CBlock *pBlock, CMutableTransaction& txNew, int64_t nFees, bool fProofOfStake);
     std::string ToString() const;
     int GetOldestBlock();
     int GetNewestBlock();
@@ -295,6 +297,7 @@ public:
     {
         READWRITE(mapMasternodePayeeVotes);
         READWRITE(mapMasternodeBlocks);
+        READWRITE(mapMasternodeWinner);
     }
 };
 

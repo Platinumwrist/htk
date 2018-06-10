@@ -11,6 +11,7 @@
 #include "Instantx.h"
 #include "timedata.h"
 #include "wallet.h"
+#include "masternode.h"
 
 #include <stdint.h>
 
@@ -133,12 +134,24 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
 					if(nSubsidy * 0 / 100 == txout.nValue) {
 						sub.type = TransactionRecord::MNReward;
 					}
-				} else if (nHeight > Params().LAST_POW_BLOCK()) {
+				} else if (nHeight > Params().LAST_POW_BLOCK() && nHeight <= TIERED_MASTERNODES_START_BLOCK) {
 					nSubsidy = 20 * COIN;
 					if(nSubsidy * 80 / 100 == txout.nValue) {
 						sub.type = TransactionRecord::MNReward;
 					}
-				}
+                } else if (nHeight > TIERED_MASTERNODES_START_BLOCK && nHeight <= TIERED_MASTERNODES_START_BLOCK + 129600) {
+                    if(txout.nValue == 12 * COIN || txout.nValue == 27 * COIN || txout.nValue == 72 * COIN || txout.nValue == 156 * COIN) {
+                        sub.type = TransactionRecord::MNReward;
+                    }
+				} else if (nHeight > TIERED_MASTERNODES_START_BLOCK + 129600 && nHeight <= TIERED_MASTERNODES_START_BLOCK + 259200) {
+                    if(txout.nValue == 4 * COIN || txout.nValue == 9 * COIN || txout.nValue == 24 * COIN || txout.nValue == 52 * COIN) {
+                        sub.type = TransactionRecord::MNReward;
+                    }
+				} else if (nHeight > TIERED_MASTERNODES_START_BLOCK + 259200) {
+                    if(txout.nValue == 1 * COIN || txout.nValue == 3 * COIN || txout.nValue == 8 * COIN || txout.nValue == 17 * COIN) {
+                        sub.type = TransactionRecord::MNReward;
+                    }
+                }
                 parts.append(sub);
             }
         }

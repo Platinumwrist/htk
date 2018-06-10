@@ -225,6 +225,13 @@ std::string BlockToString(CBlockIndex* pBlock)
         Generated = OutVolume;
     else
         Generated = GetBlockValue(pBlock->nHeight - 1);
+    
+    if(!block.mnvin.hash.IsNull()) {
+        int tier = GetMNTierByVin(block.mnvin);
+        if(tier > 0) {
+            Generated += GetMasternodePayment(chainActive.Height(), 0, tier);
+        }
+    }
 
     std::string BlockContentCells[] =
         {

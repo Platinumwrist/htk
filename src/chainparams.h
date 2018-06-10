@@ -13,8 +13,11 @@
 #include "uint256.h"
 
 #include <vector>
+#include <boost/assign.hpp>
 
 typedef unsigned char MessageStartChars[MESSAGE_START_SIZE];
+
+extern std::map<int, int> masternodeTiers;
 
 struct CDNSSeedData {
     std::string name, host;
@@ -79,7 +82,6 @@ public:
     CAmount MaxMoneyOut() const { return nMaxMoneyOut; }
     /** The masternode count that we will allow the see-saw reward payments to be off by */
     int MasternodeCountDrift() const { return nMasternodeCountDrift; }
-	int MasternodeColleteralLimxDev() const { return nMasternodeColleteralLimxDev; }
     /** Make miner stop after a block is found. In RPC, don't return until nGenProcLimit blocks are generated */
     bool MineBlocksOnDemand() const { return fMineBlocksOnDemand; }
     /** In the future use NetworkIDString() for RPC fields */
@@ -95,7 +97,6 @@ public:
     std::string SporkKey() const { return strSporkKey; }
     int64_t StartMasternodePayments() const { return nStartMasternodePayments; }
     CBaseChainParams::Network NetworkID() const { return networkID; }
-
 protected:
     CChainParams() {}
 
@@ -104,7 +105,6 @@ protected:
     //! Raw pub key bytes for the broadcast alert signing key.
     std::vector<unsigned char> vAlertPubKey;
     int nDefaultPort;
-	int nMasternodeColleteralLimxDev;
     uint256 bnProofOfWorkLimit;
     int nMaxReorganizationDepth;
     int nSubsidyHalvingInterval;

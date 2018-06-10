@@ -8,6 +8,7 @@
 #include "protocol.h"
 #include "spork.h"
 #include "chainparams.h"
+#include "main.h"
 
 CMasternodeSigner MasternodeSigner;
 CActiveMasternode activeMasternode;
@@ -402,7 +403,7 @@ vector<COutput> CActiveMasternode::SelectCoinsMasternode()
 
     // Filter
     BOOST_FOREACH (const COutput& out, vCoins) {
-        if (out.tx->vout[out.i].nValue == Params().MasternodeColleteralLimxDev() * COIN) { //exactly
+        if(IsMNCollateralValid(chainActive.Height(), out.tx->vout[out.i].nValue)) {
             filteredCoins.push_back(out);
         }
     }
@@ -425,11 +426,6 @@ bool CActiveMasternode::EnableHotColdMasterNode(CTxIn& newVin, CService& newServ
     return true;
 }
 
-
-
-
-
-
 bool CMasternodeSigner::IsVinAssociatedWithPubkey(CTxIn& vin, CPubKey& pubkey)
 {
     CScript payee2;
@@ -439,7 +435,7 @@ bool CMasternodeSigner::IsVinAssociatedWithPubkey(CTxIn& vin, CPubKey& pubkey)
     uint256 hash;
     if (GetTransaction(vin.prevout.hash, txVin, hash, true)) {
         BOOST_FOREACH (CTxOut out, txVin.vout) {
-            if (out.nValue == Params().MasternodeColleteralLimxDev() * COIN) {
+            if(IsMNCollateralValid(chainActive.Height(), out.nValue)) {
                 if (out.scriptPubKey == payee2) return true;
             }
         }

@@ -25,7 +25,7 @@ class CBlockHeader
 {
 public:
     // header
-    static const int32_t CURRENT_VERSION=3;
+    static const int32_t CURRENT_VERSION=4;
     int32_t nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;
@@ -84,6 +84,9 @@ public:
     // ppcoin: block signature - signed by one of the coin base txout[N]'s owner
     std::vector<unsigned char> vchBlockSig;
 
+    // htk: add masternode's vin for checking tier reward
+    COutPoint mnvin;
+
     // memory only
     mutable CScript payee;
     mutable std::vector<uint256> vMerkleTree;
@@ -105,8 +108,12 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         READWRITE(*(CBlockHeader*)this);
         READWRITE(vtx);
-	if(vtx.size() > 1 && vtx[1].IsCoinStake())
-		READWRITE(vchBlockSig);
+	    if(vtx.size() > 1 && vtx[1].IsCoinStake()) {
+		    READWRITE(vchBlockSig);
+        }
+        if(this->nVersion >= 4) {
+            READWRITE(mnvin);
+        }
     }
 
     void SetNull()

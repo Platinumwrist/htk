@@ -103,10 +103,12 @@ static Checkpoints::MapCheckpoints mapCheckpoints =
 		(75879, uint256("0x000000000000255a1ea30c1ccf5ff66c285ad5dd5b525fea402da67031921975"))
 		(76011, uint256("0x00000000000091117ad8f9ec617e3fb9e965c538ee2ed00cb589b540c01de7e1"))
 		(76015, uint256("0xb43773a5d71c6689bb00a75cb3de4db8469474048bdba0542e14389cbb3cb464"))
+        (186400, uint256("0x12444cd84f90c1e2b4aab8275fca5e3fc68e935a8b6371d5f0cc502ab20d1f22"))
+        (186401, uint256("0x82ba5fead0c86e5d697ac86b51d88282f5a4078d1361d165bc3b78d16b906ad7"))
 		;
 static const Checkpoints::CCheckpointData data = {
     &mapCheckpoints,
-    1493667067, // * UNIX timestamp of last checkpoint block
+    1528439930, // * UNIX timestamp of last checkpoint block
     0,    // * total number of transactions between genesis and last checkpoint
                 //   (the tx=... number in the SetBestChain debug.log lines)
     2000        // * estimated number of transactions per day after checkpoint
@@ -127,6 +129,8 @@ static const Checkpoints::CCheckpointData dataRegtest = {
     1454124731,
     0,
     100};
+
+std::map<int, int> masternodeTiers = boost::assign::map_list_of (1, 5000) (2, 10000) (3, 25000) (4, 50000);
 
 class CMainParams : public CChainParams
 {
@@ -159,7 +163,6 @@ public:
         nLastPOWBlock = 76014;
         nMaturity = 120;
         nMasternodeCountDrift = 20;
-		nMasternodeColleteralLimxDev = 5000;
         nModifierUpdateBlock = 1;
         nMaxMoneyOut = 10000000000 * COIN;
 		

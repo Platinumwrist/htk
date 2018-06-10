@@ -159,6 +159,12 @@ extern CBlockIndex* pindexBestHeader;
 /** Minimum disk space required - used in CheckDiskSpace() */
 static const uint64_t nMinDiskSpace = 52428800;
 
+/** MNCollateral for tiered masternode */
+bool IsMNCollateralValid(int nHeight, int64_t value);
+int64_t GetMNCollateral(int nHeight, int tier);
+int GetMNTierByCollateral(int nHeight, int64_t value);
+int GetMNTierByVin(const COutPoint &mnvin);
+
 /** Register a wallet to receive updates from core */
 void RegisterValidationInterface(CValidationInterface* pwalletIn);
 /** Unregister a wallet from core */
@@ -226,12 +232,11 @@ std::string GetWarnings(std::string strFor);
 /** Retrieve a transaction (from memory pool, or from disk, if possible) */
 bool GetTransaction(const uint256& hash, CTransaction& tx, uint256& hashBlock, bool fAllowSlow = false);
 /** Find the best known block, and make it the tip of the block chain */
-
 bool DisconnectBlocksAndReprocess(int blocks);
 
 // ***TODO***
 double ConvertBitsToDouble(unsigned int nBits);
-int64_t GetMasternodePayment(int nHeight, int64_t blockValue, int nMasternodeCount = 0);
+int64_t GetMasternodePayment(int nHeight, int64_t blockValue, int tier, int nMasternodeCount = 0);
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader* pblock, bool fProofOfStake);
 
 bool ActivateBestChain(CValidationState& state, CBlock* pblock = NULL);

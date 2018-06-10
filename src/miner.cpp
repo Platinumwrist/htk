@@ -101,11 +101,6 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         return NULL;
     CBlock* pblock = &pblocktemplate->block; // pointer for convenience
 
-    // -regtest only: allow overriding block.nVersion with
-    // -blockversion=N to test forking scenarios
-    if (Params().MineBlocksOnDemand())
-        pblock->nVersion = GetArg("-blockversion", pblock->nVersion);
-
     // Create coinbase tx
     CMutableTransaction txNew;
     txNew.vin.resize(1);
@@ -133,7 +128,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         bool fStakeFound = false;
         if (nSearchTime >= nLastCoinStakeSearchTime) {
             unsigned int nTxNewTime = 0;
-            if (pwallet->CreateCoinStake(*pwallet, pblock->nBits, nSearchTime - nLastCoinStakeSearchTime, txCoinStake, nTxNewTime)) {
+            if (pwallet->CreateCoinStake(*pwallet, pblock, pblock->nBits, nSearchTime - nLastCoinStakeSearchTime, txCoinStake, nTxNewTime)) {
                 pblock->nTime = nTxNewTime;
                 pblock->vtx[0].vout[0].SetEmpty();
                 pblock->vtx.push_back(CTransaction(txCoinStake));
@@ -338,7 +333,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
 
         if (!fProofOfStake) {
             //Masternode and general budget payments
-            FillBlockPayee(txNew, nFees, fProofOfStake);
+            FillBlockPayee(pblock, txNew, nFees, fProofOfStake);
 
             //Make payee
             if (txNew.vout.size() > 1) {
@@ -469,13 +464,13 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
 			//bool test = false;
 			bool test = true;
 			if(test){
-			if(chainActive.Tip()->nTime < 1471482000) LogPrintf("Point470 \n");
-			if(vNodes.empty()) LogPrintf("Point471 \n");
-			if(pwallet->IsLocked()) LogPrintf("Point472 \n");
-			if(!fMintableCoins) LogPrintf("Point473 \n");
-			if(nReserveBalance >= pwallet->GetBalance()) LogPrintf("Point474 \n");
-			if(!masternodeSync.IsSynced()) LogPrintf("Point475 \n");
-			if(!fGenerateBitcoins && !fProofOfStake) LogPrintf("Point476 \n");
+    			if(chainActive.Tip()->nTime < 1471482000) LogPrintf("Point470 \n");
+	    		if(vNodes.empty()) LogPrintf("Point471 \n");
+		    	if(pwallet->IsLocked()) LogPrintf("Point472 \n");
+			    if(!fMintableCoins) LogPrintf("Point473 \n");
+			    if(nReserveBalance >= pwallet->GetBalance()) LogPrintf("Point474 \n");
+			    if(!masternodeSync.IsSynced()) LogPrintf("Point475 \n");
+			    if(!fGenerateBitcoins && !fProofOfStake) LogPrintf("Point476 \n");
 			}
             while (chainActive.Tip()->nTime < 1471482000 || vNodes.empty() || pwallet->IsLocked() || !fMintableCoins || nReserveBalance >= pwallet->GetBalance() || !masternodeSync.IsSynced()) {
 			    nLastCoinStakeSearchInterval = 0;

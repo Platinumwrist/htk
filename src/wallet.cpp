@@ -1219,12 +1219,13 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
             if (nDepth == 0 && !pcoin->InMempool())
                 continue;
 
+            int nHeight = chainActive.Height();
             for (unsigned int i = 0; i < pcoin->vout.size(); i++) {
                 bool found = false;
                 if (nCoinType == ONLY_NOT10000IFMN) {
-                    found = !(fMasterNode && pcoin->vout[i].nValue == Params().MasternodeColleteralLimxDev() * COIN);
+                    found = !(fMasterNode && IsMNCollateralValid(nHeight, pcoin->vout[i].nValue));
                 } else if (nCoinType == ONLY_10000) {
-                    found = pcoin->vout[i].nValue == Params().MasternodeColleteralLimxDev() * COIN;
+                    found = IsMNCollateralValid(nHeight, pcoin->vout[i].nValue);
                 } else {
                     found = true;
                 }
@@ -1756,7 +1757,7 @@ bool CWallet::CreateTransaction(CScript scriptPubKey, const CAmount& nValue, CWa
 }
 
 // ppcoin: create coin stake transaction
-bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64_t nSearchInterval, CMutableTransaction& txNew, unsigned int& nTxNewTime)
+bool CWallet::CreateCoinStake(const CKeyStore& keystore, CBlock* pblock, unsigned int nBits, int64_t nSearchInterval, CMutableTransaction& txNew, unsigned int& nTxNewTime)
 {
     txNew.vin.clear();
     txNew.vout.clear();
@@ -1918,7 +1919,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     }
 
     //Masternode payment
-    FillBlockPayee(txNew, nMinFee, true);
+    FillBlockPayee(pblock, txNew, nMinFee, true);
 
     // Sign
     int nIn = 0;
