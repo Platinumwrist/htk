@@ -426,8 +426,7 @@ bool CMasternodePaymentWinner::Sign(CKey& keyMasternode, CPubKey& pubKeyMasterno
 bool CMasternodePayments::GetBlockPayee(int nBlockHeight, CScript& payee, COutPoint &mnvin)
 {
     if (mapMasternodeBlocks.count(nBlockHeight)) {
-        mnvin = mapMasternodeWinner[nBlockHeight];
-        return mapMasternodeBlocks[nBlockHeight].GetPayee(payee);
+        return mapMasternodeBlocks[nBlockHeight].GetPayee(payee, mnvin);
     }
 
     return false;
@@ -446,15 +445,13 @@ bool CMasternodePayments::IsScheduled(CMasternode& mn, int nNotBlockHeight)
         nHeight = chainActive.Tip()->nHeight;
     }
 
-    CScript mnpayee;
-    mnpayee = GetScriptForDestination(mn.pubKeyCollateralAddress.GetID());
-
     CScript payee;
+	COutPoint vin;
     for (int64_t h = nHeight; h <= nHeight + 8; h++) {
         if (h == nNotBlockHeight) continue;
         if (mapMasternodeBlocks.count(h)) {
-            if (mapMasternodeBlocks[h].GetPayee(payee)) {
-                if (mnpayee == payee) {
+            if (mapMasternodeBlocks[h].GetPayee(payee, vin)) {
+                if (mn.vin.prevout == vin) {
                     return true;
                 }
             }
@@ -486,8 +483,7 @@ bool CMasternodePayments::AddWinningMasternode(CMasternodePaymentWinner& winnerI
         }
     }
 
-    mapMasternodeWinner[winnerIn.nBlockHeight] = winnerIn.vinMasternode.prevout;
-    mapMasternodeBlocks[winnerIn.nBlockHeight].AddPayee(winnerIn.payee, 1);
+    mapMasternodeBlocks[winnerIn.nBlockHeight].AddPayee(winnerIn.payee, 1, winnerIn.mnvin);
 
     return true;
 }
@@ -567,9 +563,9 @@ std::string CMasternodeBlockPayees::GetRequiredPaymentsString()
         CBitcoinAddress address2(address1);
 
         if (ret != "Unknown") {
-            ret += ", " + address2.ToString() + ":" + boost::lexical_cast<std::string>(payee.nVotes);
+            ret += ", " + address2.ToString() + ":" + boost::lexical_cast<std::string>(payee.nVotes) + "(" + payee.mnvin.ToString() + ")";
         } else {
-            ret = address2.ToString() + ":" + boost::lexical_cast<std::string>(payee.nVotes);
+            ret = address2.ToString() + ":" + boost::lexical_cast<std::string>(payee.nVotes) + "(" + payee.mnvin.ToString() + ")";
         }
     }
 
@@ -621,7 +617,6 @@ void CMasternodePayments::CleanPaymentList()
             masternodeSync.mapSeenSyncMNW.erase((*it).first);
             mapMasternodePayeeVotes.erase(it++);
             mapMasternodeBlocks.erase(winner.nBlockHeight);
-            mapMasternodeWinner.erase(winner.nBlockHeight);
         } else {
             ++it;
         }
@@ -698,7 +693,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
             newWinner.nBlockHeight = nBlockHeight;
 
             CScript payee = GetScriptForDestination(pmn->pubKeyCollateralAddress.GetID());
-            newWinner.AddPayee(payee);
+            newWinner.AddPayee(payee, pmn->vin.prevout);
 
             CTxDestination address1;
             ExtractDestination(payee, address1);

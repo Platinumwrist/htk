@@ -63,17 +63,20 @@ class CMasternodePayee
 public:
     CScript scriptPubKey;
     int nVotes;
+	COutPoint mnvin;
 
     CMasternodePayee()
     {
         scriptPubKey = CScript();
         nVotes = 0;
+		mnvin = COutPoint();
     }
 
-    CMasternodePayee(CScript payee, int nVotesIn)
+    CMasternodePayee(CScript payee, int nVotesIn, const COutPoint& vin)
     {
         scriptPubKey = payee;
         nVotes = nVotesIn;
+		mnvin = vin;
     }
 
     ADD_SERIALIZE_METHODS;
@@ -83,6 +86,7 @@ public:
     {
         READWRITE(scriptPubKey);
         READWRITE(nVotes);
+        READWRITE(mnvin);
     }
 };
 
@@ -104,22 +108,22 @@ public:
         vecPayments.clear();
     }
 
-    void AddPayee(CScript payeeIn, int nIncrement)
+    void AddPayee(CScript payeeIn, int nIncrement, const COutPoint& vin)
     {
         LOCK(cs_vecPayments);
 
         BOOST_FOREACH (CMasternodePayee& payee, vecPayments) {
-            if (payee.scriptPubKey == payeeIn) {
+            if (payee.mnvin == vin) {
                 payee.nVotes += nIncrement;
                 return;
             }
         }
 
-        CMasternodePayee c(payeeIn, nIncrement);
+        CMasternodePayee c(payeeIn, nIncrement, vin);
         vecPayments.push_back(c);
     }
 
-    bool GetPayee(CScript& payee)
+    bool GetPayee(CScript& payee, COutPoint& vin)
     {
         LOCK(cs_vecPayments);
 
@@ -128,18 +132,19 @@ public:
             if (p.nVotes > nVotes) {
                 payee = p.scriptPubKey;
                 nVotes = p.nVotes;
+				vin = p.mnvin;
             }
         }
 
         return (nVotes > -1);
     }
 
-    bool HasPayeeWithVotes(CScript payee, int nVotesReq)
+    bool HasPayeeWithVotes(const COutPoint& vin, int nVotesReq)
     {
         LOCK(cs_vecPayments);
 
         BOOST_FOREACH (CMasternodePayee& p, vecPayments) {
-            if (p.nVotes >= nVotesReq && p.scriptPubKey == payee) return true;
+            if (p.nVotes >= nVotesReq && p.mnvin == vin) return true;
         }
 
         return false;
@@ -167,12 +172,14 @@ public:
     int nBlockHeight;
     CScript payee;
     std::vector<unsigned char> vchSig;
+	COutPoint mnvin;
 
     CMasternodePaymentWinner()
     {
         nBlockHeight = 0;
         vinMasternode = CTxIn();
         payee = CScript();
+		mnvin = COutPoint();
     }
 
     CMasternodePaymentWinner(CTxIn vinIn)
@@ -180,6 +187,7 @@ public:
         nBlockHeight = 0;
         vinMasternode = vinIn;
         payee = CScript();
+		mnvin = COutPoint();
     }
 
     uint256 GetHash()
@@ -188,6 +196,7 @@ public:
         ss << payee;
         ss << nBlockHeight;
         ss << vinMasternode.prevout;
+		ss << mnvin;
 
         return ss.GetHash();
     }
@@ -197,9 +206,10 @@ public:
     bool SignatureValid();
     void Relay();
 
-    void AddPayee(CScript payeeIn)
+    void AddPayee(CScript payeeIn, const COutPoint& vin)
     {
         payee = payeeIn;
+		mnvin = vin;
     }
 
 
@@ -212,6 +222,7 @@ public:
         READWRITE(nBlockHeight);
         READWRITE(payee);
         READWRITE(vchSig);
+		READWRITE(mnvin);
     }
 
     std::string ToString()
@@ -221,6 +232,7 @@ public:
         ret += ", " + boost::lexical_cast<std::string>(nBlockHeight);
         ret += ", " + payee.ToString();
         ret += ", " + boost::lexical_cast<std::string>((int)vchSig.size());
+		ret += ", " + mnvin.ToString();
         return ret;
     }
 };
@@ -239,7 +251,6 @@ private:
 public:
     std::map<uint256, CMasternodePaymentWinner> mapMasternodePayeeVotes;
     std::map<int, CMasternodeBlockPayees> mapMasternodeBlocks;
-    std::map<int, COutPoint> mapMasternodeWinner;
     std::map<uint256, int> mapMasternodesLastVote; //prevout.hash + prevout.n, nBlockHeight
 
     CMasternodePayments()
@@ -252,7 +263,6 @@ public:
     {
         LOCK2(cs_mapMasternodeBlocks, cs_mapMasternodePayeeVotes);
         mapMasternodeBlocks.clear();
-        mapMasternodeWinner.clear();
         mapMasternodePayeeVotes.clear();
     }
 
@@ -297,7 +307,6 @@ public:
     {
         READWRITE(mapMasternodePayeeVotes);
         READWRITE(mapMasternodeBlocks);
-        READWRITE(mapMasternodeWinner);
     }
 };
 
