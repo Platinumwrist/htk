@@ -240,22 +240,30 @@ int GetMNTierByCollateral(int nHeight, int64_t value) {
     return 0;
 }
 
+map<string, int> mapMNTierByVin;
+
 int GetMNTierByVin(const COutPoint &mnvin) {
+	string key = mnvin.hash.ToString() + strprintf("%d", mnvin.n);
+    map<string, int>::iterator it = mapMNTierByVin.find(key);
+    if (it != mapMNTierByVin.end())
+        return it->second;
+
+	int tier = 0;
     CTransaction txin;
     uint256 hashBlockPrev;
-    if (!GetTransaction(mnvin.hash, txin, hashBlockPrev, true)) {
-        return 0;
-    }
-    if(txin.vout.size() <= mnvin.n) {
-        return 0;
-    }
-    BOOST_FOREACH(PAIRTYPE(const int, int) & mntier, masternodeTiers)
-    {
-        if(mntier.second * COIN == txin.vout[mnvin.n].nValue) {
-            return mntier.first;
-        }
-    }
-    return 0;
+    if (GetTransaction(mnvin.hash, txin, hashBlockPrev, true)) {
+        if(mnvin.n < txin.vout.size()) {
+			BOOST_FOREACH(PAIRTYPE(const int, int) & mntier, masternodeTiers)
+			{
+				if(mntier.second * COIN == txin.vout[mnvin.n].nValue) {
+					tier = mntier.first;
+					break;
+				}
+			}
+		}
+	}
+	mapMNTierByVin.insert(std::make_pair(key, tier));
+    return tier;
 }
 
 void RegisterValidationInterface(CValidationInterface* pwalletIn)
